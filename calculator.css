@@ -1,0 +1,44 @@
+#Main{
+	width: max-content;
+	background-color: #ddd;
+}
+#InputDisplay{
+	height: 50px;
+}
+#Display{
+	border: 3px solid black;
+	border-radius: 3px;
+	height: inherit;
+	width: inherit;
+	box-sizing: border-box;
+	font-size: 25px;
+	text-indent: 15px;
+}
+#NumpadDiv{
+	display: inline-block;
+	width: 210px;
+	height: 280px;
+	margin-right: 20px;
+}
+#OperationsDiv{
+	display: inline-block;
+	height: 280px;
+	width: 70px;
+	margin-right: 20px;
+}
+#AuxiliaryDiv{
+	display: inline-block;
+	width: 70px;
+	height: 280px;
+}
+button{
+	box-sizing: border-box;
+	display: inline-block;
+	background-color: #ccc;
+	color: #333;
+	width: 50px;
+	height: 50px;
+	margin: 10px;
+	font-size: 25px;
+	padding: 0;
+}
