@@ -1,6 +1,11 @@
 var calcMemory = null;
-var clearOnNumberInput = false;
-var periodEnabled = true;
+var decimalEnabled = true;
+var operandStart = 0;
+var undefinedState = false;
+var undoEnabled = false;
+var numpadEnabled = true;
+const operatorsArray = [];
+const operandsArray = [];
 function add(left, right){
 	return left + right;
 }
@@ -30,15 +35,43 @@ function strToNum(str){
 function clearDisplay(){
 	document.querySelector("#Display").value = "";
 }
+function clearArray(arr){
+	arr.splice(0, arr.length);
+}
+function resetInternals(){
+	clearArray(operatorsArray);
+	clearArray(operandsArray);
+	operandStart = 0;
+	undoEnabled = false;
+	decimalEnabled = true;
+	undefinedState = false;
+	numpadEnabled = true;
+}
+function resetAfterSolve(){
+	clearArray(operandsArray);
+	operandStart = 0;
+	undoEnabled = false;
+	numpadEnabled = false;
+}
 function updateDisplay(val){
-	if(clearOnNumberInput){ clearDisplay(); clearOnNumberInput = false;}
 	document.querySelector("#Display").value += val;
 }
-function checkIfLogical(displayStr){
+function handleNumberClick(num){
+	if(!numpadEnabled){ return; }
+	if(undefinedState){ clearDisplay(); undefinedState = false; }
+	updateDisplay(num);
+	undoEnabled = true;
+}
+function getLastInput(){
+	const input = document.querySelector("#Display").value;
+	return input.charAt(input.length-1);
+}
+function checkIfLogical(){
 // prevents contiguous operator inputs
-	if(!displayStr.length){ return false; }
-	const lastChar = displayStr.charAt(displayStr.length-1);
-	switch(lastChar){
+	const input = document.querySelector("#Display").value;
+	if(!input.length){ return false; }
+	const lastInput = input.charAt(input.length-1);
+	switch(lastInput){
 		case "+":
 		case "-":
 		case "*":
@@ -46,75 +79,101 @@ function checkIfLogical(displayStr){
 	}
 	return true;
 }
-function handleOperatorClick(operator){
-	const displayStr = document.querySelector("#Display").value;
-	if(checkIfLogical(displayStr)){ periodEnabled = true; updateDisplay(operator); }
+function pushOperand(){
+	const input = document.querySelector("#Display").value;
+	const len = input.length;
+	operandsArray.push( strToNum(input.slice(operandStart, len)) );
+	operandStart = len+1;
 }
-function evaluatePeriod(){
-	const displayStr = document.querySelector("#Display").value;
-	if(!periodEnabled){ return; }
-	updateDisplay(".");
-	periodEnabled = false;
+function handleOperatorClick(operator){
+	if(checkIfLogical() && !undefinedState){
+		pushOperand();
+		numpadEnabled = true;
+		operatorsArray.push(operator);
+		updateDisplay(operator);
+		undoEnabled = true;
+		decimalEnabled = true;
+	}
+}
+function handleDecimal(){
+	if(!decimalEnabled || undefinedState || !numpadEnabled){ return; }
+	getLastInput().match(/[0-9]/) === null ? updateDisplay("0.") : updateDisplay(".");
+	decimalEnabled = false;
+	undoEnabled = true;
 }
 function evaluateExpression(){
-	const expression = document.querySelector("#Display").value;
-	var indexOfOperator = expression.search(/[\+\-\*\/]/);
-	if(indexOfOperator < 0){ return; } // no operator in expression
-	if(expression.length-1 === indexOfOperator){ return; } // no righthand operand
-	var result = solve();
+	const input = document.querySelector("#Display").value;
+	if(!operatorsArray.length || undefinedState){ return; } // no operator in expression
+	if(input.charAt(input.length - 1) === operatorsArray[operatorsArray.length - 1]){ return; } // no right operand
+	pushOperand();
+	var result = solveExpression();
 	document.querySelector("#Display").value = result;
+	if(result.includes(".")){ decimalEnabled = false; }
+	resetAfterSolve();
 }
-function solve(){
-	const expression = document.querySelector("#Display").value;
+function solveExpression(){
 	var leftOperand = null;
 	var rightOperand = null;
 	var result = null;
-	var operands = expression.split(/[\+\-\*\/]/);
-	operands.forEach( (value, index, operands) => operands[index] = strToNum(value) );
-	var operators = expression.split(/[\d.]+/).filter( (index) => index !== "");
-	if(operators.length){
-		while(operators.includes("*") || operators.includes("/")){
-			var opIndex = operators.findIndex( (index) => index === "*" || index === "/" );
-			leftOperand = operands[opIndex];
-			rightOperand = operands[opIndex + 1];
-			result = operate(operators[opIndex], leftOperand, rightOperand);
-			if(result === undefined){ clearOnNumberInput = true; return undefined;}
-			operators.splice(opIndex, 1);
-			operands.splice(opIndex, 2, result);
+	if(operatorsArray.length){
+		while(operatorsArray.includes("*") || operatorsArray.includes("/")){
+			var opIndex = operatorsArray.findIndex( (index) => index === "*" || index === "/" );
+			leftOperand = operandsArray[opIndex];
+			rightOperand = operandsArray[opIndex + 1];
+			result = operate(operatorsArray[opIndex], leftOperand, rightOperand);
+			if(result === undefined){ undefinedState = true; return "undefined";}
+			operatorsArray.splice(opIndex, 1);
+			operandsArray.splice(opIndex, 2, result);
 		}
-		while(operators.includes("+") || operators.includes("-")){
-			var opIndex = operators.findIndex( (index) => index === "+" || index === "-" );
-			leftOperand = operands[opIndex];
-			rightOperand = operands[opIndex + 1];
-			result = operate(operators[opIndex], leftOperand, rightOperand);
-			operators.splice(opIndex, 1);
-			operands.splice(opIndex, 2, result);
+		while(operatorsArray.includes("+") || operatorsArray.includes("-")){
+			var opIndex = operatorsArray.findIndex( (index) => index === "+" || index === "-" );
+			leftOperand = operandsArray[opIndex];
+			rightOperand = operandsArray[opIndex + 1];
+			result = operate(operatorsArray[opIndex], leftOperand, rightOperand);
+			operatorsArray.splice(opIndex, 1);
+			operandsArray.splice(opIndex, 2, result);
 		}
 	}
-	return operands[0];
+	return (operandsArray[0]).toString(10);
 }
-
+function repositionOperandStart(){
+	const input = document.querySelector("#Display").value;
+	const len = operatorsArray.length;
+	if(!len){ operandStart = 0; return; }
+	const index = input.lastIndexOf(operatorsArray[len - 1], input.length);
+	operandStart = index + 1;
+}
 function undo(){
-	const display = document.querySelector("#Display").value;
-	if(!display.length){ return; }
+	const input = document.querySelector("#Display").value;
+	const len = input.length;
+	const lastInput = getLastInput();
+	if(!undoEnabled || undefinedState){ return; }
+	if(lastInput.match(/[\*\-\+\/]/)){ operandsArray.pop(); operatorsArray.pop(); repositionOperandStart(); }
+	if(lastInput === "."){ decimalEnabled = true; }
+	const newInput = input.slice(0, len - 1);
 	clearDisplay();
-	updateDisplay(display.slice(0, display.length - 1));
+	updateDisplay(newInput);
+	undoEnabled = false;
 }
 function memSave(){
-	const display = document.querySelector("#Display").value;
-	if(!display.length){ return; }
-	var operands = display.split(/[\+\-\*\/]/);
-	if(!operands.length){ return; }
-	calcMemory = strToNum(operands.pop());
+	const input = document.querySelector("#Display").value;
+	if(!input.length || undefinedState){ return; }
+	clearDisplay();
+	numpadEnabled = true;
+	calcMemory = input.slice(operandStart, input.length);
 }
 function memRecall(){
-	if(calcMemory === null){ return; }
-	clearDisplay();
+	if(calcMemory === null || calcMemory === ""){ return; }
 	updateDisplay(calcMemory);
+	undoEnabled = false;
 }
 function handleAuxiliaryClick(text){
 	switch(text){
-		case "C": clearDisplay(); break;
+		case "C": { 
+			clearDisplay();
+			resetInternals();
+			break;
+		}
 		case "<-": undo(); break;
 		case "MS": memSave(); break;
 		case "MR": memRecall(); break;
