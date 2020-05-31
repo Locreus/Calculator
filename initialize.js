@@ -1,4 +1,5 @@
-window.addEventListener("load", () => document.querySelector("#Display").value = "");
+window.addEventListener("load", () => document.querySelector("#Display").textContent = "");
+window.addEventListener("keydown", function(event){ handleKeyDown(event); });
 const operators = ["+", "-", "*", "/"];
 const numpad = ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0"];
 const auxiliary = ["C", "<-", "MS", "MR"];

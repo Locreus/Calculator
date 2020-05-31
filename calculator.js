@@ -33,7 +33,7 @@ function strToNum(str){
 	return str.includes(".") === true ? parseFloat(str) : parseInt(str);
 }
 function clearDisplay(){
-	document.querySelector("#Display").value = "";
+	document.querySelector("#Display").textContent = "";
 }
 function clearArray(arr){
 	arr.splice(0, arr.length);
@@ -54,7 +54,7 @@ function resetAfterSolve(){
 	numpadEnabled = false;
 }
 function updateDisplay(val){
-	document.querySelector("#Display").value += val;
+	document.querySelector("#Display").textContent += val;
 }
 function handleNumberClick(num){
 	if(!numpadEnabled){ return; }
@@ -63,12 +63,12 @@ function handleNumberClick(num){
 	undoEnabled = true;
 }
 function getLastInput(){
-	const input = document.querySelector("#Display").value;
+	const input = document.querySelector("#Display").textContent;
 	return input.charAt(input.length-1);
 }
 function checkIfLogical(){
 // prevents contiguous operator inputs
-	const input = document.querySelector("#Display").value;
+	const input = document.querySelector("#Display").textContent;
 	if(!input.length){ return false; }
 	const lastInput = input.charAt(input.length-1);
 	switch(lastInput){
@@ -80,7 +80,7 @@ function checkIfLogical(){
 	return true;
 }
 function pushOperand(){
-	const input = document.querySelector("#Display").value;
+	const input = document.querySelector("#Display").textContent;
 	const len = input.length;
 	operandsArray.push( strToNum(input.slice(operandStart, len)) );
 	operandStart = len+1;
@@ -102,12 +102,12 @@ function handleDecimal(){
 	undoEnabled = true;
 }
 function evaluateExpression(){
-	const input = document.querySelector("#Display").value;
+	const input = document.querySelector("#Display").textContent;
 	if(!operatorsArray.length || undefinedState){ return; } // no operator in expression
 	if(input.charAt(input.length - 1) === operatorsArray[operatorsArray.length - 1]){ return; } // no right operand
 	pushOperand();
 	var result = solveExpression();
-	document.querySelector("#Display").value = result;
+	document.querySelector("#Display").textContent = result;
 	if(result.includes(".")){ decimalEnabled = false; }
 	resetAfterSolve();
 }
@@ -137,14 +137,14 @@ function solveExpression(){
 	return (operandsArray[0]).toString(10);
 }
 function repositionOperandStart(){
-	const input = document.querySelector("#Display").value;
+	const input = document.querySelector("#Display").textContent;
 	const len = operatorsArray.length;
 	if(!len){ operandStart = 0; return; }
 	const index = input.lastIndexOf(operatorsArray[len - 1], input.length);
 	operandStart = index + 1;
 }
 function undo(){
-	const input = document.querySelector("#Display").value;
+	const input = document.querySelector("#Display").textContent;
 	const len = input.length;
 	const lastInput = getLastInput();
 	if(!undoEnabled || undefinedState){ return; }
@@ -156,14 +156,14 @@ function undo(){
 	undoEnabled = false;
 }
 function memSave(){
-	const input = document.querySelector("#Display").value;
-	if(!input.length || undefinedState){ return; }
-	clearDisplay();
+	const input = document.querySelector("#Display").textContent;
+	if(!input.length || input.length === operandStart || undefinedState){ return; }
 	numpadEnabled = true;
-	calcMemory = input.slice(operandStart, input.length);
+	calcMemory = input.slice(operandStart);
 }
 function memRecall(){
-	if(calcMemory === null || calcMemory === ""){ return; }
+	if(calcMemory === null || calcMemory === "" || undefinedState){ return; }
+	repositionOperandStart();
 	updateDisplay(calcMemory);
 	undoEnabled = false;
 }
@@ -178,4 +178,12 @@ function handleAuxiliaryClick(text){
 		case "MS": memSave(); break;
 		case "MR": memRecall(); break;
 	}
+}
+function handleKeyDown(event){
+	const key = event.key;
+	if(key.match(/^[0-9]/)){ handleNumberClick(key); return; }
+	if(key.match(/[\*\-\+\/]/)){ handleOperatorClick(key); return; }
+	if(key.match(/[.]/)){ handleDecimal(); return; }
+	if(key.match(/[=]/)){ evaluateExpression(); return; }
+	if(key === "Backspace"){ undo(); }
 }

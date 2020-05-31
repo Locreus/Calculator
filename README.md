@@ -1,1 +1,1 @@
-A calculator implementing the 4 basic operations addition, subtraction, multiplication and division.
+A calculator implementing the fundamental operations addition, subtraction, multiplication and division. Supports keyboard input.
